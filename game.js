@@ -164,10 +164,6 @@ const startLevelSelect = document.getElementById('start-level');
 const MAX_START_LEVEL = 10;
 const RESUME_COOLDOWN = 150; // ms sin input tras reanudar
 
-let startLevel = 1;    // nivel inicial de la partida en curso
-let selectedLevel = 1; // elegido en el menú; se aplica en el próximo init()
-let inputBlockedUntil = 0;
-
 function levelFor(totalLines) {
   return Math.max(startLevel, Math.floor(totalLines / 10) + 1);
 }
