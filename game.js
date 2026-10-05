@@ -56,6 +56,9 @@ const MAX_SCORES = 5;
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let combo = 0, bestCombo = 0, pendingScore = false;
+let startLevel = 1;    // nivel inicial de la partida en curso
+let selectedLevel = 1; // elegido en el menú; se aplica en el próximo init()
+let inputBlockedUntil = 0;
 
 // ---- Records (localStorage, siempre con try/catch) ----
 function loadScores() {
@@ -151,6 +154,28 @@ function showStartScreen() {
   startScreen.classList.remove('hidden');
 }
 
+const pauseMenu = document.getElementById('pause-menu');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const menuControls = document.getElementById('menu-controls');
+const startLevelSelect = document.getElementById('start-level');
+
+const MAX_START_LEVEL = 10;
+const RESUME_COOLDOWN = 150; // ms sin input tras reanudar
+
+let startLevel = 1;    // nivel inicial de la partida en curso
+let selectedLevel = 1; // elegido en el menú; se aplica en el próximo init()
+let inputBlockedUntil = 0;
+
+function levelFor(totalLines) {
+  return Math.max(startLevel, Math.floor(totalLines / 10) + 1);
+}
+
+function intervalFor(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
+
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
@@ -217,8 +242,8 @@ function clearLines() {
     bestCombo = Math.max(bestCombo, combo);
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = levelFor(lines);
+    dropInterval = intervalFor(level);
     updateHUD();
   } else {
     combo = 0;
@@ -370,18 +395,34 @@ function submitScore() {
   restartBtn.focus();
 }
 
+function openPauseMenu() {
+  paused = true;
+  cancelAnimationFrame(animId);
+  startLevelSelect.value = selectedLevel;
+  pauseMenu.classList.remove('hidden');
+  resumeBtn.focus();
+}
+
+function resetPauseMenuUI() {
+  pauseMenu.classList.add('hidden');
+  menuControls.classList.add('hidden');
+  controlsBtn.setAttribute('aria-expanded', 'false');
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+}
+
+function closePauseMenu() {
+  paused = false;
+  resetPauseMenuUI();
+  inputBlockedUntil = performance.now() + RESUME_COOLDOWN;
+  lastTime = performance.now();
+  cancelAnimationFrame(animId);
+  animId = requestAnimationFrame(loop);
+}
+
 function togglePause() {
   if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
-  }
+  if (paused) closePauseMenu();
+  else openPauseMenu();
 }
 
 function loop(ts) {
@@ -406,7 +447,8 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  startLevel = selectedLevel;
+  level = levelFor(0);
   paused = false;
   gameOver = false;
   combo = 0;
@@ -414,22 +456,37 @@ function init() {
   pendingScore = false;
   gameoverExtra.classList.add('hidden');
   startScreen.classList.add('hidden');
-  dropInterval = 1000;
+  dropInterval = intervalFor(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  resetPauseMenuUI();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  const t = e.target;
-  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  const tg = e.target;
+  if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA')) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) togglePause();
+    e.preventDefault();
+    return;
+  }
+  if (paused) {
+    // Menú abierto: ningún input llega al juego ni hace scroll.
+    // Las flechas solo se permiten sobre el selector de nivel.
+    const onSelect = e.target === startLevelSelect;
+    const onButton = e.target instanceof HTMLButtonElement;
+    if ((e.code === 'Space' && !onButton) || (e.code.startsWith('Arrow') && !onSelect)) e.preventDefault();
+    return;
+  }
+  if (gameOver) return;
+  if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+  if (performance.now() < inputBlockedUntil) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -445,11 +502,26 @@ document.addEventListener('keydown', e => {
       tryRotate();
       break;
     case 'Space':
-      e.preventDefault();
       hardDrop();
       break;
   }
   updateHUD();
+});
+
+for (let l = 1; l <= MAX_START_LEVEL; l++) {
+  const opt = document.createElement('option');
+  opt.value = l;
+  opt.textContent = l;
+  startLevelSelect.appendChild(opt);
+}
+startLevelSelect.addEventListener('change', () => {
+  selectedLevel = parseInt(startLevelSelect.value, 10) || 1;
+});
+resumeBtn.addEventListener('click', closePauseMenu);
+pauseRestartBtn.addEventListener('click', init);
+controlsBtn.addEventListener('click', () => {
+  const open = menuControls.classList.toggle('hidden') === false;
+  controlsBtn.setAttribute('aria-expanded', String(open));
 });
 
 restartBtn.addEventListener('click', init);

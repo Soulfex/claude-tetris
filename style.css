@@ -265,8 +265,18 @@ kbd {
   border-color: #7aa2f7;
 }
 
+/* ---- Menú de pausa ---- */
+.menu-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: #7aa2f7;
+  margin-bottom: 4px;
+}
+
 #play-btn,
-#save-score-btn {
+#save-score-btn,
+.menu-btn {
   background: #7aa2f7;
   color: #0f0f17;
   border: none;
@@ -299,4 +309,66 @@ kbd {
 
 .link-btn:hover {
   color: #e57373;
+
+.menu-btn {
+  width: 180px;
+  padding: 10px 20px;
+}
+
+.menu-btn:hover {
+  background: #9bbdff;
+}
+
+.menu-btn.secondary {
+  background: #22223a;
+  color: #7aa2f7;
+  border: 1px solid #3a3a5a;
+}
+
+.menu-btn.secondary:hover {
+  background: #2a2a4a;
+}
+
+.menu-btn:focus-visible,
+#start-level:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.menu-controls {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.menu-controls li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-controls.hidden {
+  display: none;
+}
+
+.menu-level {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #888;
+}
+
+#start-level {
+  background: #22223a;
+  color: #7aa2f7;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 700;
 }
